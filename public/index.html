@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Börskollen Stockholm</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;700&family=Syne:wght@700;800&display=swap');
+  :root {
+    --bg:#060608;--surface:#0e0e14;--surface2:#16161f;--border:#1c1c2a;
+    --green:#00e676;--red:#ff3d57;--yellow:#ffd600;--text:#e0e0f0;--muted:#44445a;--muted2:#666680;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--bg);color:var(--text);font-family:'IBM Plex Mono',monospace;min-height:100vh}
+  .topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:.75rem 1.5rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem}
+  .topbar h1{font-family:'Syne',sans-serif;font-size:1.2rem;font-weight:800;background:linear-gradient(90deg,var(--green),#00b0ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+  .topbar-right{display:flex;align-items:center;gap:1rem;font-size:.7rem;color:var(--muted2)}
+  #clock{color:var(--green);font-weight:700}
+  .btn{background:transparent;border:1px solid var(--green);color:var(--green);font-family:'IBM Plex Mono',monospace;font-size:.65rem;letter-spacing:1px;padding:.4rem .8rem;border-radius:4px;cursor:pointer;transition:all .15s;text-transform:uppercase}
+  .btn:hover{background:var(--green);color:var(--bg)}
+  .main{padding:1rem 1.5rem;max-width:1400px;margin:0 auto}
+  .section-title{font-family:'Syne',sans-serif;font-size:.62rem;letter-spacing:3px;text-transform:uppercase;color:var(--muted2);margin:1.5rem 0 .75rem;padding-bottom:.5rem;border-bottom:1px solid var(--border)}
+  .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:.6rem;margin-bottom:.75rem}
+  .stat-box{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:.7rem 1rem}
+  .stat-box .lbl{font-size:.58rem;color:var(--muted2);letter-spacing:1px;text-transform:uppercase;margin-bottom:.3rem}
+  .stat-box .val{font-family:'Syne',sans-serif;font-size:1.15rem;font-weight:700}
+  .pos{color:var(--green)}.neg{color:var(--red)}.neu{color:var(--yellow)}
+  .table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:.5rem}
+  table{width:100%;border-collapse:collapse;font-size:.72rem}
+  thead tr{background:var(--surface2);border-bottom:1px solid var(--border)}
+  th{padding:.55rem .75rem;text-align:left;font-size:.58rem;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted2);font-weight:500}
+  th.r{text-align:right}
+  tbody tr{border-bottom:1px solid var(--border);transition:background .1s}
+  tbody tr:last-child{border-bottom:none}
+  tbody tr:hover{background:var(--surface2)}
+  td{padding:.6rem .75rem;white-space:nowrap}td.r{text-align:right}
+  .ticker-bold{font-weight:700;font-size:.78rem}
+  .name-sm{color:var(--muted2);font-size:.62rem}
+  .two-col{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+  @media(max-width:650px){.two-col{grid-template-columns:1fr}}
+  .mover-row{display:flex;justify-content:space-between;align-items:center;padding:.5rem .75rem;border-bottom:1px solid var(--border);font-size:.7rem}
+  .mover-row:last-child{border-bottom:none}
+  .mover-row:hover{background:var(--surface2)}
+  .search-bar{display:flex;gap:.5rem;margin-bottom:.5rem}
+  .search-input{flex:1;background:var(--surface);border:1px solid var(--border);color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:.72rem;padding:.5rem .75rem;border-radius:4px;outline:none;transition:border-color .15s}
+  .search-input:focus{border-color:var(--green)}
+  .search-input::placeholder{color:var(--muted)}
+  #data-output{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:1rem;font-size:.6rem;color:var(--muted2);white-space:pre-wrap;word-break:break-all;max-height:250px;overflow-y:auto;line-height:1.6}
+  .spinner{display:inline-block;width:9px;height:9px;border:2px solid var(--muted);border-top-color:var(--green);border-radius:50%;animation:spin .6s linear infinite;margin-right:6px;vertical-align:middle}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .status{font-size:.6rem;color:var(--muted2);margin-top:.4rem}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <h1>⬛ BÖRSKOLLEN STOCKHOLM</h1>
+  <div class="topbar-right">
+    <span id="clock">--:--:--</span>
+    <span id="mstatus">–</span>
+    <button class="btn" onclick="refreshAll()">↻ Uppdatera</button>
+  </div>
+</div>
+<div class="main">
+
+  <div class="section-title">📁 Min portfölj</div>
+  <div class="stat-grid">
+    <div class="stat-box"><div class="lbl">Investerat</div><div class="val" id="s-inv">–</div></div>
+    <div class="stat-box"><div class="lbl">Värde nu</div><div class="val" id="s-val">–</div></div>
+    <div class="stat-box"><div class="lbl">Resultat kr</div><div class="val" id="s-pnl">–</div></div>
+    <div class="stat-box"><div class="lbl">Avkastning</div><div class="val" id="s-pct">–</div></div>
+    <div class="stat-box"><div class="lbl">Idag</div><div class="val" id="s-day">–</div></div>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr>
+        <th>Aktie</th><th class="r">Kurs</th><th class="r">Idag</th>
+        <th class="r">Köpkurs</th><th class="r">+/- %</th><th class="r">+/- kr</th>
+        <th class="r">Värde</th><th class="r">H/L idag</th>
+      </tr></thead>
+      <tbody id="ptable"><tr><td colspan="8" style="text-align:center;color:var(--muted2);padding:1.5rem"><span class="spinner"></span>Hämtar portfölj...</td></tr></tbody>
+    </table>
+  </div>
+  <div class="status" id="p-status"></div>
+
+  <div class="section-title">🔥 Marknadens rörelser – idag</div>
+  <div class="two-col">
+    <div>
+      <div style="font-size:.6rem;color:var(--green);letter-spacing:2px;margin-bottom:.5rem">▲ VINNARE</div>
+      <div class="table-wrap" id="winners"><div style="padding:1rem;text-align:center;color:var(--muted2);font-size:.7rem"><span class="spinner"></span>Laddar...</div></div>
+    </div>
+    <div>
+      <div style="font-size:.6rem;color:var(--red);letter-spacing:2px;margin-bottom:.5rem">▼ FÖRLORARE</div>
+      <div class="table-wrap" id="losers"><div style="padding:1rem;text-align:center;color:var(--muted2);font-size:.7rem"><span class="spinner"></span>Laddar...</div></div>
+    </div>
+  </div>
+
+  <div class="section-title">🔍 Sök aktie</div>
+  <div class="search-bar">
+    <input class="search-input" id="sinput" placeholder="Ticker, t.ex. VOLV-B, SAND, HM-B..." onkeydown="if(event.key==='Enter')doSearch()"/>
+    <button class="btn" onclick="doSearch()">Sök</button>
+  </div>
+  <div class="table-wrap" id="sresult" style="display:none"></div>
+
+  <div class="section-title">📡 Live data – för Claude</div>
+  <pre id="data-output">Laddar data...</pre>
+  <div class="status" id="json-status"></div>
+
+</div>
+<script>
+  function cls(n){return n>0.1?'pos':n<-0.1?'neg':'neu'}
+  function fmtPct(n){return n!=null?(n>=0?'+':'')+n.toFixed(2)+'%':'–'}
+  function fmtKr(n,d=0){return n!=null?(n>=0?'+':'')+n.toFixed(d)+' kr':'–'}
+  function fmt(n,d=2){return n!=null?n.toFixed(d):'–'}
+
+  function updateClock(){
+    const now=new Date();
+    document.getElementById('clock').textContent=now.toLocaleTimeString('sv-SE');
+    const h=now.getHours(),m=now.getMinutes();
+    const open=(h>9||(h===9&&m>=0))&&(h<17||(h===17&&m<=30));
+    const el=document.getElementById('mstatus');
+    el.textContent=open?'🟢 ÖPPEN':'🔴 STÄNGD';
+    el.style.color=open?'var(--green)':'var(--muted2)';
+  }
+  setInterval(updateClock,1000);updateClock();
+
+  async function loadPortfolio(){
+    try{
+      const d=await fetch('/api/portfolio').then(r=>r.json());
+      if(d.error)throw new Error(d.error);
+      const s=d.summary;
+      document.getElementById('s-inv').textContent=s.totalInvested+' kr';
+      document.getElementById('s-val').textContent=s.totalValue+' kr';
+      const pnlEl=document.getElementById('s-pnl');pnlEl.textContent=fmtKr(s.totalPnl_kr);pnlEl.className='val '+cls(s.totalPnl_kr);
+      const pctEl=document.getElementById('s-pct');pctEl.textContent=fmtPct(s.totalPnl_pct);pctEl.className='val '+cls(s.totalPnl_pct);
+      const dayEl=document.getElementById('s-day');dayEl.textContent=fmtPct(s.todayPnl_pct);dayEl.className='val '+cls(s.todayPnl_pct);
+      let html='';
+      [...d.portfolio,...d.watchlist].forEach(h=>{
+        const isWatch=!h.shares;
+        html+=`<tr>
+          <td><div class="ticker-bold">${h.ticker.replace('.ST','')}</div><div class="name-sm">${h.name}${isWatch?' · bevakning':''}</div></td>
+          <td class="r">${h.error?'–':fmt(h.price)} kr</td>
+          <td class="r ${cls(h.dayChange_pct)}">${fmtPct(h.dayChange_pct)}</td>
+          <td class="r">${fmt(h.bought)} kr</td>
+          <td class="r ${cls(h.pnl_pct)}">${fmtPct(h.pnl_pct)}</td>
+          <td class="r ${cls(h.pnl_kr)}">${isWatch?'–':fmtKr(h.pnl_kr)}</td>
+          <td class="r">${h.value?h.value+' kr':'–'}</td>
+          <td class="r" style="font-size:.62rem;color:var(--muted2)">${h.high?fmt(h.high)+' / '+fmt(h.low):'–'}</td>
+        </tr>`;
+      });
+      document.getElementById('ptable').innerHTML=html;
+      document.getElementById('p-status').textContent='Uppdaterad '+new Date(d.generated).toLocaleTimeString('sv-SE');
+      return d;
+    }catch(e){
+      document.getElementById('ptable').innerHTML=`<tr><td colspan="8" style="text-align:center;color:var(--red);padding:1rem">Fel: ${e.message}</td></tr>`;
+      return null;
+    }
+  }
+
+  async function loadMovers(){
+    try{
+      const d=await fetch('/api/movers').then(r=>r.json());
+      if(d.error)throw new Error(d.error);
+      const moverHTML=(list,pos)=>list.map(q=>`
+        <div class="mover-row">
+          <div style="display:flex;flex-direction:column;gap:2px">
+            <span style="font-weight:700;font-size:.76rem">${q.ticker.replace('.ST','')}</span>
+            <span style="font-size:.6rem;color:var(--muted2)">${(q.name||'').substring(0,22)}</span>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">
+            <span style="font-weight:700">${fmt(q.price)} kr</span>
+            <span style="font-size:.68rem;font-weight:700" class="${pos?'pos':'neg'}">${fmtPct(q.dayChange_pct)}</span>
+          </div>
+        </div>`).join('');
+      document.getElementById('winners').innerHTML=moverHTML(d.winners,true);
+      document.getElementById('losers').innerHTML=moverHTML(d.losers,false);
+      return d;
+    }catch(e){
+      document.getElementById('winners').innerHTML=`<div style="padding:1rem;color:var(--red);font-size:.7rem">Fel: ${e.message}</div>`;
+      return null;
+    }
+  }
+
+  async function doSearch(){
+    const ticker=document.getElementById('sinput').value.trim();
+    if(!ticker)return;
+    const el=document.getElementById('sresult');
+    el.style.display='block';
+    el.innerHTML=`<div style="padding:1rem;color:var(--muted2);font-size:.7rem"><span class="spinner"></span>Söker ${ticker}...</div>`;
+    try{
+      const q=await fetch(`/api/quote?ticker=${encodeURIComponent(ticker)}`).then(r=>r.json());
+      if(q.error){el.innerHTML=`<div style="padding:1rem;color:var(--red);font-size:.7rem">${q.error}</div>`;return;}
+      el.innerHTML=`
+        <div class="mover-row">
+          <div style="display:flex;flex-direction:column;gap:2px">
+            <span style="font-weight:700;font-size:.9rem">${q.ticker.replace('.ST','')}</span>
+            <span style="font-size:.65rem;color:var(--muted2)">${q.name||''}</span>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">
+            <span style="font-weight:700;font-size:1rem">${fmt(q.price)} kr</span>
+            <span class="${cls(q.dayChange_pct)}" style="font-size:.72rem;font-weight:700">${fmtPct(q.dayChange_pct)} idag</span>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:.5rem;padding:.75rem;font-size:.65rem;color:var(--muted2)">
+          <div>Öppning<br><strong style="color:var(--text)">${fmt(q.open)} kr</strong></div>
+          <div>Dagshögsta<br><strong style="color:var(--green)">${fmt(q.high)} kr</strong></div>
+          <div>Dagslästa<br><strong style="color:var(--red)">${fmt(q.low)} kr</strong></div>
+          <div>Volym<br><strong style="color:var(--text)">${q.volume?Math.round(q.volume/1000)+'k':'–'}</strong></div>
+        </div>`;
+    }catch(e){el.innerHTML=`<div style="padding:1rem;color:var(--red);font-size:.7rem">Fel: ${e.message}</div>`;}
+  }
+
+  async function refreshAll(){
+    const[pData,mData]=await Promise.all([loadPortfolio(),loadMovers()]);
+    if(pData){
+      document.getElementById('data-output').textContent=JSON.stringify({portfolio:pData,movers:mData},null,2);
+      document.getElementById('json-status').textContent='Uppdaterad '+new Date().toLocaleTimeString('sv-SE');
+    }
+  }
+
+  refreshAll();
+  setInterval(refreshAll,5*60*1000);
+</script>
+</body>
+</html>
